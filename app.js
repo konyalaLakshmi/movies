@@ -4,7 +4,7 @@ const { open } = require("sqlite");
 const app = express();
 const sqlite3 = require("sqlite3");
 const dbpath = path.join(__dirname, "moviesData.db");
-app.use(express());
+app.use(express.json());
 let db = null;
 const initializeDBAndServer = async () => {
   try {
@@ -20,31 +20,32 @@ const initializeDBAndServer = async () => {
     process.exit(1);
   }
 };
+initializeDBAndServer();
 const convertDbObjectToResponseObject = (dbObject) => {
   return {
-    movieId: dbObject.movie_id,
-    directorID: dbObject.director_id,
     movieName: dbObject.movie_name,
-    leadActor: dbObject.lead_actor,
   };
 };
+
 const convertDbObjectToResponseObject1 = (dbObject) => {
   return {
     directorId: dbObject.director_id,
     directorName: dbObject.director_name,
   };
 };
-const convertDbObjectToResponseObject2 = (dbObject) => {
+
+const convertDbObjectToResponseObject4 = (dbObject) => {
   return {
+    directorId: dbObject.director_id,
     movieName: dbObject.movie_name,
+    leadActor: dbObject.lead_actor,
   };
 };
-initializeDBAndServer();
 app.get("/movies/", async (request, response) => {
-  const getmovies = `SELECT * FROM movie`;
+  const getmovies = `SELECT movie_name FROM movie ORDER BY movie_id`;
   const movieslist = await db.all(getmovies);
   response.send(
-    movieslist.map((each) => convertDbObjectToResponseObject(each))
+    movieslist.map((eachmovie) => convertDbObjectToResponseObject(eachmovie))
   );
 });
 app.post("/movies/", async (request, response) => {
@@ -61,13 +62,16 @@ app.get("/movies/:movieId/", async (request, response) => {
   const { movieId } = request.params;
   const getMovieQuery = `
     SELECT 
-      * 
+      movie_id as movieId,
+      director_id as directorId,
+      movie_name as movieName,
+      lead_actor as leadActor
     FROM 
       movie 
     WHERE 
       movie_id = ${movieId};`;
   const movie = await db.get(getMovieQuery);
-  response.send(convertDbObjectToResponseObject(movie));
+  response.send(movie);
 });
 app.put("/movies/:movieId/", async (request, response) => {
   const { directorId, movieName, leadActor } = request.body;
@@ -108,10 +112,11 @@ app.get("/directors/:directorId/movies/", async (request, response) => {
     SELECT 
       movie_name 
     FROM 
-      movie 
+      director INNER JOIN movie ON director.director_id=movie.director_id
     WHERE 
-      director_id = ${directorId};`;
+      director.director_id = ${directorId};`;
   const movie = await db.all(getMovieQuery);
-  response.send(convertDbObjectToResponseObject2(movie));
+  response.send(movie.map((each) => convertDbObjectToResponseObject(each)));
 });
 module.exports = app;
+
